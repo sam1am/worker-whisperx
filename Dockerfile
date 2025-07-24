@@ -44,13 +44,18 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 RUN pip install --upgrade pyannote.audio==3.3.1 || true
 
-# Copy and run script to fetch models
-COPY builder/fetch_models.py /fetch_models.py
-RUN python /fetch_models.py && \
-    rm /fetch_models.py
+# Copy model setup script
+COPY builder/setup_models.py /setup_models.py
+
+# Try to download basic models during build (without HF models)
+RUN python /setup_models.py
 
 # Copy source code into image
 COPY src .
 
-# Set default command
-CMD python -u /rp_handler.py
+# Create a startup script that checks for models before starting the handler
+RUN echo '#!/bin/bash\npython /setup_models.py\npython -u /rp_handler.py' > /start.sh && \
+    chmod +x /start.sh
+
+# Set startup command to the script
+CMD ["/start.sh"]
