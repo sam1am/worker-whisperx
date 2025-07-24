@@ -6,6 +6,8 @@ repository, with some modifications to make it work with the RP platform.
 
 import os
 import numpy as np
+import pandas as pd
+import json
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Tuple, Dict, Any
 from runpod.serverless.utils import rp_cuda
@@ -23,6 +25,43 @@ from rp_schema import *
 # Add NAN to numpy namespace to fix compatibility with pyannote.audio
 if not hasattr(np, 'NAN'):
     np.NAN = np.nan
+
+# Custom JSON encoder to handle non-serializable objects
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, pd.DataFrame):
+            return obj.to_dict('records')
+        if pd.isna(obj):
+            return None
+        return super(NpEncoder, self).default(obj)
+
+
+def make_serializable(obj):
+    """Convert all non-serializable objects to serializable format"""
+    if isinstance(obj, dict):
+        return {k: make_serializable(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [make_serializable(i) for i in obj]
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict('records')
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    elif isinstance(obj, np.integer):
+        return int(obj)
+    elif isinstance(obj, np.floating):
+        return float(obj)
+    elif pd.isna(obj):
+        return None
+    else:
+        return obj
 
 
 class Predictor:
@@ -143,8 +182,16 @@ class Predictor:
                     max_speakers=max_speakers
                 )
 
+                # Convert diarize_segments to a serializable format if it contains a DataFrame
+                if hasattr(diarize_segments, 'get') and isinstance(diarize_segments.get('segments', None), pd.DataFrame):
+                    diarize_segments['segments'] = diarize_segments['segments'].to_dict(
+                        'records')
+
                 result = assign_word_speakers(diarize_segments, result)
-                result["diarize_segments"] = diarize_segments
+
+                # Make sure all elements in the result are JSON serializable
+                result = make_serializable(result)
+
             except Exception as e:
                 # Add error information to the result but continue with transcription
                 result["diarization_error"] = str(e)
