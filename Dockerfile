@@ -42,6 +42,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -r /requirements.txt --no-cache-dir && \
     rm /requirements.txt
 
+RUN pip install --upgrade pyannote.audio==3.3.1 || true
+
 # Copy and run script to fetch models
 COPY builder/fetch_models.py /fetch_models.py
 RUN python /fetch_models.py && \
