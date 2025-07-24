@@ -43,6 +43,10 @@ def run_whisper_job(job):
             model_name=job_input['model_name'],
             language=job_input["language"],
             batch_size=job_input["batch_size"],
+            diarize=job_input["diarize"],
+            min_speakers=job_input["min_speakers"],
+            max_speakers=job_input["max_speakers"],
+            hf_token=job_input["hf_token"],
         )
 
     with rp_debugger.LineTimer('cleanup_step'):
