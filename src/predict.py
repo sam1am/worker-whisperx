@@ -5,6 +5,7 @@ repository, with some modifications to make it work with the RP platform.
 """
 
 import os
+import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Tuple, Dict, Any
 from runpod.serverless.utils import rp_cuda
@@ -18,6 +19,10 @@ from whisperx import (
     assign_word_speakers
 )
 from rp_schema import *
+
+# Add NAN to numpy namespace to fix compatibility with pyannote.audio
+if not hasattr(np, 'NAN'):
+    np.NAN = np.nan
 
 
 class Predictor:
@@ -124,20 +129,26 @@ class Predictor:
 
         # Handle diarization if requested
         if diarize:
-            if not self.diarize_model:
-                self.load_diarize_model(hf_token)
+            try:
+                if not self.diarize_model:
+                    self.load_diarize_model(hf_token)
 
-            if not self.diarize_model:
-                raise ValueError(
-                    "Diarization model could not be loaded. Make sure to provide a valid HF token.")
+                if not self.diarize_model:
+                    raise ValueError(
+                        "Diarization model could not be loaded. Make sure to provide a valid HF token.")
 
-            diarize_segments = self.diarize_model(
-                audio_data,
-                min_speakers=min_speakers,
-                max_speakers=max_speakers
-            )
+                diarize_segments = self.diarize_model(
+                    audio_data,
+                    min_speakers=min_speakers,
+                    max_speakers=max_speakers
+                )
 
-            result = assign_word_speakers(diarize_segments, result)
-            result["diarize_segments"] = diarize_segments
+                result = assign_word_speakers(diarize_segments, result)
+                result["diarize_segments"] = diarize_segments
+            except Exception as e:
+                # Add error information to the result but continue with transcription
+                result["diarization_error"] = str(e)
+                import traceback
+                result["diarization_traceback"] = traceback.format_exc()
 
         return result
