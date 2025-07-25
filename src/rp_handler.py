@@ -44,6 +44,7 @@ def run_whisper_job(job):
             language=job_input["language"],
             batch_size=job_input["batch_size"],
             diarize=job_input["diarize"],
+            diarization_method=job_input["diarization_method"],
             min_speakers=job_input["min_speakers"],
             max_speakers=job_input["max_speakers"],
             hf_token=job_input["hf_token"],

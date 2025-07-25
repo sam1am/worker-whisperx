@@ -1,6 +1,9 @@
 # Use specific version of nvidia cuda image
 FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu20.04
 
+# Build argument for Hugging Face token
+ARG HF_TOKEN=""
+
 # Remove any third-party apt sources to avoid issues with expiring keys.
 RUN rm -f /etc/apt/sources.list.d/*.list
 
@@ -8,6 +11,7 @@ RUN rm -f /etc/apt/sources.list.d/*.list
 SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 ENV SHELL=/bin/bash
+ENV HF_TOKEN=${HF_TOKEN}
 
 # Set working directory
 WORKDIR /
@@ -49,8 +53,16 @@ COPY builder/fetch_models.py /fetch_models.py
 RUN python /fetch_models.py && \
     rm /fetch_models.py
 
+# Create audio directory and copy sample audio
+COPY audio/ /audio/
+
 # Copy source code into image
 COPY src .
+
+# Copy and run script to preload diarization model
+COPY builder/preload_diarize_model.py /preload_diarize_model.py
+RUN python /preload_diarize_model.py && \
+    rm /preload_diarize_model.py
 
 # Set default command
 CMD python -u /rp_handler.py

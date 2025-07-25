@@ -51,6 +51,11 @@ INPUT_VALIDATIONS = {
         'required': False,
         'default': False
     },
+    'diarization_method': {
+        'type': str,
+        'required': False,
+        'default': "pyannote"  # 'pyannote' or 'ecapa_tdnn'
+    },
     'min_speakers': {
         'type': int,
         'required': False,
