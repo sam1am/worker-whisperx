@@ -66,6 +66,12 @@ LATEST_IMAGE_NAME="${REGISTRY}/${IMAGE_NAME}:latest"
 
 # Build Docker image
 echo "Building Docker image: $FULL_IMAGE_NAME"
+# if HF_TOKEN is not set, stop the script with error.
+if [ -z "$HF_TOKEN" ]; then
+  echo "Error: HF_TOKEN environment variable is not set."
+  echo "Please set it before running this script."
+  exit 1
+fi
 if docker build --build-arg HF_TOKEN="$HF_TOKEN" -t "$FULL_IMAGE_NAME" -f "$DOCKERFILE_PATH" .; then
   echo "Docker image built successfully"
   

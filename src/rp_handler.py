@@ -48,6 +48,8 @@ def run_whisper_job(job):
             min_speakers=job_input["min_speakers"],
             max_speakers=job_input["max_speakers"],
             hf_token=job_input["hf_token"],
+            similarity_threshold=job_input["similarity_threshold"],
+            distance_threshold=job_input["distance_threshold"]
         )
 
     with rp_debugger.LineTimer('cleanup_step'):

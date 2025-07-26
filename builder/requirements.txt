@@ -8,3 +8,5 @@ setuptools>=65
 nltk
 whisperx
 git+https://github.com/speechbrain/speechbrain.git@develop
+scikit-learn
+soundfile

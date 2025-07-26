@@ -7,7 +7,7 @@ class WordSegment(BaseModel):
     start: Optional[float] = None
     end: Optional[float] = None
     score: Optional[float] = None
-    speaker: Optional[str] = None  # Add speaker field
+    speaker: Optional[str] = None 
 
 
 class Segment(BaseModel):
@@ -15,14 +15,14 @@ class Segment(BaseModel):
     end: float
     text: str
     words: List[WordSegment] = []
-    speaker: Optional[str] = None  # Add speaker field
+    speaker: Optional[str] = None 
 
 
 class TranscriberOutput(BaseModel):
     segments: List[Segment] = []
     word_segments: List[WordSegment] = []
-    diarize_segments: Optional[Dict[str, Any]
-                               ] = None  # Add diarization segments
+    diarize_segments: Optional[Dict[str, Any]] = None
+    audio_duration: Optional[float] = None 
 
 
 INPUT_VALIDATIONS = {
@@ -54,7 +54,7 @@ INPUT_VALIDATIONS = {
     'diarization_method': {
         'type': str,
         'required': False,
-        'default': "pyannote"  # 'pyannote' or 'ecapa_tdnn'
+        'default': "pyannote"  # 'pyannote', 'ecapa_tdnn', 'ahc', or 'speechbrain_verify'
     },
     'min_speakers': {
         'type': int,
@@ -70,5 +70,15 @@ INPUT_VALIDATIONS = {
         'type': str,
         'required': False,
         'default': None
+    },
+    'similarity_threshold': {
+        'type': float,
+        'required': False,
+        'default': 0.65
+    },
+    'distance_threshold': {
+        'type': float,
+        'required': False,
+        'default': 0.5
     }
 }
