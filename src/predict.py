@@ -335,23 +335,27 @@ class Predictor:
 
         audio_data = load_audio(audio)
         
-        # Calculate audio duration
-        duration_in_seconds = len(audio_data) / 16000.0
-
         result = model.transcribe(
             audio_data, batch_size=batch_size, language=language, print_progress=True)
-        
-        # Add audio_duration to the result
+
+        # Calculate audio duration and add it to the result dictionary
+        duration_in_seconds = len(audio_data) / 16000.0
         result['audio_duration'] = duration_in_seconds
 
         model_a, metadata = load_align_model(
             language_code=result["language"], device=self.device)
 
-        result = align(
+        # ** FIX STARTS HERE **
+        # Perform alignment and store in a new variable
+        alignment_result = align(
             result["segments"], model_a, metadata, audio_data, self.device,
             return_char_alignments=False, print_progress=True)
-        
-        result["word_segments"] = result.pop("word_segments", []) # Ensure key exists
+
+        # Update the original result with the aligned segments and word-level timestamps
+        # This preserves the 'audio_duration' key.
+        result["segments"] = alignment_result["segments"]
+        result["word_segments"] = alignment_result.get("word_segments", [])
+        # ** FIX ENDS HERE **
 
         # Handle diarization if requested
         if diarize:
