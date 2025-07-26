@@ -15,6 +15,8 @@ import json
 import copy
 import tempfile
 import soundfile as sf
+import time
+import math
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Tuple, Dict, Any
 from runpod.serverless.utils import rp_cuda
@@ -335,30 +337,33 @@ class Predictor:
 
         audio_data = load_audio(audio)
         
+        # 1. Transcribe
+        transcribe_start_time = time.time()
         result = model.transcribe(
             audio_data, batch_size=batch_size, language=language, print_progress=True)
+        transcribe_end_time = time.time()
+
+        result['transcription_duration'] = math.ceil(transcribe_end_time - transcribe_start_time)
 
         # Calculate audio duration and add it to the result dictionary
         duration_in_seconds = len(audio_data) / 16000.0
-        result['audio_duration'] = duration_in_seconds
+        result['audio_duration'] = math.ceil(duration_in_seconds)
 
+        # 2. Align
+        align_start_time = time.time()
         model_a, metadata = load_align_model(
             language_code=result["language"], device=self.device)
-
-        # ** FIX STARTS HERE **
-        # Perform alignment and store in a new variable
         alignment_result = align(
             result["segments"], model_a, metadata, audio_data, self.device,
             return_char_alignments=False, print_progress=True)
-
-        # Update the original result with the aligned segments and word-level timestamps
-        # This preserves the 'audio_duration' key.
         result["segments"] = alignment_result["segments"]
         result["word_segments"] = alignment_result.get("word_segments", [])
-        # ** FIX ENDS HERE **
+        align_end_time = time.time()
+        result['alignment_duration'] = math.ceil(align_end_time - align_start_time)
 
-        # Handle diarization if requested
+        # 3. Diarize
         if diarize:
+            diarize_start_time = time.time()
             try:
                 if diarization_method == "ecapa_tdnn":
                     result = self._diarize_iterative(result, audio_data, similarity_threshold)
@@ -385,5 +390,8 @@ class Predictor:
                 result["diarization_error"] = str(e)
                 import traceback
                 result["diarization_traceback"] = traceback.format_exc()
-
+            finally:
+                diarize_end_time = time.time()
+                result['diarization_duration'] = math.ceil(diarize_end_time - diarize_start_time)
+        
         return result

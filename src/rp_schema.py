@@ -22,7 +22,10 @@ class TranscriberOutput(BaseModel):
     segments: List[Segment] = []
     word_segments: List[WordSegment] = []
     diarize_segments: Optional[Dict[str, Any]] = None
-    audio_duration: Optional[float] = None 
+    audio_duration: Optional[int] = None 
+    transcription_duration: Optional[int] = None
+    alignment_duration: Optional[int] = None
+    diarization_duration: Optional[int] = None
 
 
 INPUT_VALIDATIONS = {
