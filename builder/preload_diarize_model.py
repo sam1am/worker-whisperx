@@ -13,8 +13,7 @@ from whisperx import (
     load_audio,
     diarize
 )
-from speechbrain.inference.speaker import EncoderClassifier
-
+from speechbrain.inference.speaker import EncoderClassifier, SpeakerRecognition
 
 # Add NAN to numpy namespace to fix compatibility with pyannote.audio
 if not hasattr(np, 'NAN'):
@@ -30,6 +29,7 @@ def main():
     # Set up device and compute type
     device = "cpu"  # Use CPU during build
     compute_type = "int8"
+    model_dir = "/tmp"  # Consistent with other files
 
     print("Loading WhisperX model...")
     # Load a small model just for testing
@@ -37,7 +37,7 @@ def main():
         "tiny",
         device=device,
         compute_type=compute_type,
-        download_root="/tmp",
+        download_root=model_dir,  # Use consistent path
         asr_options={
             "max_new_tokens": None,
             "clip_timestamps": None,
@@ -60,7 +60,8 @@ def main():
     # Run a quick diarization to ensure models are cached
     print("Running sample pyannote diarization...")
     try:
-        diarize_segments = diarize_model(audio_data, min_speakers=1, max_speakers=2)
+        diarize_segments = diarize_model(
+            audio_data, min_speakers=1, max_speakers=2)
         print("Pyannote diarization successful! Models are cached.")
     except Exception as e:
         print(f"Error during pyannote diarization: {e}")
@@ -86,6 +87,22 @@ def main():
         import traceback
         print(traceback.format_exc())
         print("ECAPA-TDNN model may not have been properly cached.")
+        sys.exit(1)
+
+    # Preload SpeechBrain verification model
+    print("Loading SpeechBrain speaker verification model...")
+    try:
+        verification_model = SpeakerRecognition.from_hparams(
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            savedir="/tmp/speechbrain_verify_models",
+            run_opts={"device": device}
+        )
+        print("SpeechBrain verification model loaded and cached successfully.")
+    except Exception as e:
+        print(f"Error during SpeechBrain verification model loading: {e}")
+        import traceback
+        print(traceback.format_exc())
+        print("SpeechBrain verification model may not have been properly cached.")
         sys.exit(1)
 
     print("Preloading complete!")

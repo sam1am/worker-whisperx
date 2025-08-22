@@ -42,7 +42,7 @@ INPUT_VALIDATIONS = {
     'language': {
         'type': str,
         'required': False,
-        'default': None
+        'default': "en"
     },
     'batch_size': {
         'type': int,
