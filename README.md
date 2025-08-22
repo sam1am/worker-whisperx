@@ -2,16 +2,11 @@
 
 <h1>WhisperX | Worker</h1>  
 
-[WhisperX](https://github.com/m-bain/whisperX?tab=readme-ov-file) for serverless RunPod inferencing. Uses [Faster Whisper](https://github.com/guillaumekln/faster-whisper) as a template. [Docker Image](https://hub.docker.com/r/realyashnag/worker-whisperx) is hosted on Docker Hub.
+[WhisperX](https://github.com/m-bain/whisperX?tab=readme-ov-file) for serverless RunPod inferencing. Uses [Faster Whisper](https://github.com/guillaumekln/faster-whisper) as a template.
 
+This is a fork of [realyashnag/worker-whisperx](https://github.com/realyashnag/worker-whisperx), with additional features including speaker diarization support.
 
-<h1>Faster Whisperx | Worker</h1>  
-
-This repository contains the [Faster Whisper](https://github.com/guillaumekln/faster-whisper) Worker for RunPod. The Whisper Worker is designed to process audio files using various Whisper models, with options for transcription formatting, language translation, and more. It's part of the RunPod Workers collection aimed at providing diverse functionality for endpoint processing.
-
-[Endpoint Docs](https://docs.runpod.io/reference/faster-whisper)
-
-[Docker Image](https://hub.docker.com/r/runpod/ai-api-faster-whisper)
+[Docker Image](https://hub.docker.com/r/timberthrax/worker-whisperx)
 
 </div>
 
@@ -31,6 +26,34 @@ To build the Docker image with a Hugging Face token (for pyannote model preloadi
 ```bash
 docker build --build-arg HF_TOKEN=your_hf_token_here -t worker-whisperx .
 ```
+
+### Automated Build and Push Script
+
+This repository includes a convenient script `dw.sh` for building and pushing Docker images with automatic version incrementing:
+
+```bash
+# Build the Docker image (automatically increments patch version)
+./dw.sh
+
+# Build and push the Docker image to Docker Hub
+./dw.sh --push
+```
+
+The script requires the `HF_TOKEN` environment variable to be set for building the image with pyannote model support:
+
+```bash
+export HF_TOKEN=your_hf_token_here
+./dw.sh --push
+```
+
+The script will:
+1. Read the current version from `version.txt`
+2. Increment the patch version number
+3. Build the Docker image with the new version tag
+4. Tag the image as `latest`
+5. Push both the versioned and latest tags to Docker Hub (when using `--push`)
+
+The versioning follows semantic versioning (MAJOR.MINOR.PATCH) and automatically increments the PATCH number with each build.
 
 ## Model Inputs
 
