@@ -15,31 +15,143 @@ This repository contains the [Faster Whisper](https://github.com/guillaumekln/fa
 
 </div>
 
+## Docker Image
+
+The Docker image comes preloaded with the following models:
+- Whisper models: tiny, large-v2
+- SpeechBrain ECAPA-TDNN speaker recognition model
+- SpeechBrain speaker verification model
+
+For pyannote diarization, you'll need to provide your own Hugging Face token with access to the pyannote models.
+
+### Building with Hugging Face Token
+
+To build the Docker image with a Hugging Face token (for pyannote model preloading):
+
+```bash
+docker build --build-arg HF_TOKEN=your_hf_token_here -t worker-whisperx .
+```
+
 ## Model Inputs
 
 | Input                               | Type  | Description                                                                                                                                              |
 |-------------------------------------|-------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `audio`                             | Path  | Audio file                                                                                                                                               |
-| `audio_base64`                      | str   | Base64-encoded audio file                                                                                                                                |
-| `model`                             | str   | Choose a Whisper model. Choices: "tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3". Default: "base"                                  |
-| `transcription`                     | str   | Choose the format for the transcription. Choices: "plain_text", "formatted_text", "srt", "vtt". Default: "plain_text"                                    |
-| `translate`                         | bool  | Translate the text to English when set to True. Default: False                                                                                           |
-| `translation`                       | str   | Choose the format for the translation. Choices: "plain_text", "formatted_text", "srt", "vtt". Default: "plain_text"                                      |
-| `language`                          | str   | Language spoken in the audio, specify None to perform language detection. Default: None                                                                  |
-| `temperature`                       | float | Temperature to use for sampling. Default: 0                                                                                                              |
-| `best_of`                           | int   | Number of candidates when sampling with non-zero temperature. Default: 5                                                                                 |
-| `beam_size`                         | int   | Number of beams in beam search, only applicable when temperature is zero. Default: 5                                                                     |
-| `patience`                          | float | Optional patience value to use in beam decoding. Default: None                                                                                           |
-| `length_penalty`                    | float | Optional token length penalty coefficient (alpha). Default: None                                                                                         |
-| `suppress_tokens`                   | str   | Comma-separated list of token ids to suppress during sampling. Default: "-1"                                                                             |
-| `initial_prompt`                    | str   | Optional text to provide as a prompt for the first window. Default: None                                                                                 |
-| `condition_on_previous_text`        | bool  | If True, provide the previous output of the model as a prompt for the next window. Default: True                                                         |
-| `temperature_increment_on_fallback` | float | Temperature to increase when falling back when the decoding fails. Default: 0.2                                                                          |
-| `compression_ratio_threshold`       | float | If the gzip compression ratio is higher than this value, treat the decoding as failed. Default: 2.4                                                      |
-| `logprob_threshold`                 | float | If the average log probability is lower than this value, treat the decoding as failed. Default: -1.0                                                     |
-| `no_speech_threshold`               | float | If the probability of the token is higher than this value, consider the segment as silence. Default: 0.6                                                 |
-| `enable_vad`                        | bool  | If True, use the voice activity detection (VAD) to filter out parts of the audio without speech. This step is using the Silero VAD model. Default: False |
-| `word_timestamps`                   | bool  | If True, include word timestamps in the output. Default: False                                                                                           |
+| `model_name`                        | str   | Choose a Whisper model. Choices: "tiny", "base", "small", "medium", "large-v1", "large-v2", "large-v3". Default: "large-v2"                             |
+| `language`                          | str   | Language spoken in the audio, specify None to perform language detection. Default: "en"                                                                  |
+| `batch_size`                        | int   | Batch size for transcription. Default: 16                                                                                                                |
+| `diarize`                           | bool  | Enable speaker diarization. Default: False                                                                                                               |
+| `diarization_method`                | str   | Choose diarization method. Choices: "pyannote", "ecapa_tdnn", "ahc", "speechbrain_verify". Default: "pyannote"                                          |
+| `min_speakers`                      | int   | Minimum number of speakers (for pyannote method). Default: None                                                                                          |
+| `max_speakers`                      | int   | Maximum number of speakers (for pyannote method). Default: None                                                                                          |
+| `hf_token`                          | str   | Hugging Face token for pyannote model access. Default: None                                                                                              |
+| `similarity_threshold`              | float | Similarity threshold for ecapa_tdnn method. Default: 0.65                                                                                                |
+| `distance_threshold`                | float | Distance threshold for ahc method. Default: 0.5                                                                                                          |
+
+## Diarization
+
+This worker now supports speaker diarization, which identifies and labels different speakers in an audio file. There are several methods available:
+
+### Diarization Methods
+
+1. **Pyannote** (default): Uses the pyannote.audio library for state-of-the-art diarization
+   - Most accurate method
+   - Requires Hugging Face token with access to pyannote models
+   - Supports min_speakers and max_speakers parameters
+
+2. **ECAPA-TDNN**: Uses SpeechBrain's ECAPA-TDNN embeddings with a greedy clustering approach
+   - Good balance of accuracy and speed
+   - No external dependencies
+   - Uses similarity_threshold parameter
+
+3. **AHC**: Uses Agglomerative Hierarchical Clustering with SpeechBrain embeddings
+   - Good for when you want to tune clustering behavior
+   - No external dependencies
+   - Uses distance_threshold parameter
+
+4. **SpeechBrain Verify**: Uses SpeechBrain's speaker verification model
+   - Most computationally expensive
+   - No external dependencies
+   - Uses file-based verification
+
+### Pyannote Diarization (Recommended)
+
+To use pyannote diarization, you'll need a Hugging Face token with access to the pyannote models:
+
+```json
+{
+    "input": {
+        "audio": "https://example.com/audio.mp3",
+        "diarize": true,
+        "diarization_method": "pyannote",
+        "hf_token": "YOUR_HF_TOKEN"
+    }
+}
+```
+
+You can also specify the expected number of speakers:
+
+```json
+{
+    "input": {
+        "audio": "https://example.com/audio.mp3",
+        "diarize": true,
+        "diarization_method": "pyannote",
+        "hf_token": "YOUR_HF_TOKEN",
+        "min_speakers": 2,
+        "max_speakers": 4
+    }
+}
+```
+
+### Alternative Diarization Methods
+
+For the alternative methods, no Hugging Face token is required:
+
+```json
+{
+    "input": {
+        "audio": "https://example.com/audio.mp3",
+        "diarize": true,
+        "diarization_method": "ecapa_tdnn"
+    }
+}
+```
+
+Each method has tunable parameters:
+
+```json
+{
+    "input": {
+        "audio": "https://example.com/audio.mp3",
+        "diarize": true,
+        "diarization_method": "ahc",
+        "distance_threshold": 0.4
+    }
+}
+```
+
+```json
+{
+    "input": {
+        "audio": "https://example.com/audio.mp3",
+        "diarize": true,
+        "diarization_method": "ecapa_tdnn",
+        "similarity_threshold": 0.7
+    }
+}
+```
+
+## Performance Metrics
+
+The worker now includes performance metrics in the output to help you understand processing times for each step:
+
+- `audio_duration`: Duration of the input audio in seconds (rounded up)
+- `transcription_duration`: Time taken for transcription in seconds (rounded up)
+- `alignment_duration`: Time taken for word alignment in seconds (rounded up)
+- `diarization_duration`: Time taken for diarization in seconds (rounded up)
+
+These metrics help you understand the processing overhead of each step and optimize your usage accordingly.
 
 ## Test Inputs
 
@@ -53,34 +165,93 @@ The following inputs can be used for testing the model:
 }
 ```
 
-## Sample output
+## Sample Output (with Diarization)
+
 ```json
 {
     "segments": [
         {
-            "id": 1,
-            "seek": 106,
-            "start": 0.11,
-            "end": 3.11,
-            "text": " Hola mundo.",
-            "tokens": [
-                50364,
-                22637,
-                7968,
-                13,
-                50514
+            "start": 0.0,
+            "end": 3.0,
+            "text": "Hello world.",
+            "words": [
+                {
+                    "word": "Hello",
+                    "start": 0.0,
+                    "end": 1.5,
+                    "speaker": "SPEAKER_00"
+                },
+                {
+                    "word": "world.",
+                    "start": 1.5,
+                    "end": 3.0,
+                    "speaker": "SPEAKER_00"
+                }
             ],
-            "temperature": 0.1,
-            "avg_logprob": -0.8348079785480325,
-            "compression_ratio": 0.5789473684210527,
-            "no_speech_prob": 0.1453857421875
+            "speaker": "SPEAKER_00"
+        },
+        {
+            "start": 3.5,
+            "end": 6.0,
+            "text": "How are you?",
+            "words": [
+                {
+                    "word": "How",
+                    "start": 3.5,
+                    "end": 4.0,
+                    "speaker": "SPEAKER_01"
+                },
+                {
+                    "word": "are",
+                    "start": 4.0,
+                    "end": 4.5,
+                    "speaker": "SPEAKER_01"
+                },
+                {
+                    "word": "you?",
+                    "start": 4.5,
+                    "end": 6.0,
+                    "speaker": "SPEAKER_01"
+                }
+            ],
+            "speaker": "SPEAKER_01"
         }
     ],
-    "detected_language": "es",
-    "transcription": "Hola mundo.",
-    "translation": null,
-    "device": "cuda",
-    "model": "large-v2",
-    "translation_time": 0.7796223163604736
+    "word_segments": [
+        {
+            "word": "Hello",
+            "start": 0.0,
+            "end": 1.5,
+            "speaker": "SPEAKER_00"
+        },
+        {
+            "word": "world.",
+            "start": 1.5,
+            "end": 3.0,
+            "speaker": "SPEAKER_00"
+        },
+        {
+            "word": "How",
+            "start": 3.5,
+            "end": 4.0,
+            "speaker": "SPEAKER_01"
+        },
+        {
+            "word": "are",
+            "start": 4.0,
+            "end": 4.5,
+            "speaker": "SPEAKER_01"
+        },
+        {
+            "word": "you?",
+            "start": 4.5,
+            "end": 6.0,
+            "speaker": "SPEAKER_01"
+        }
+    ],
+    "audio_duration": 6,
+    "transcription_duration": 2,
+    "alignment_duration": 1,
+    "diarization_duration": 3
 }
 ```
